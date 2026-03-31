@@ -1,0 +1,38 @@
+import pandas as pd
+import numpy as np
+
+train = pd.read_csv("train.csv")
+test = pd.read_csv("test.csv")
+
+def engineer_features(df):
+    df = df.copy()
+    
+    # 1. How fast is the fire closing in? Normalize by distance
+    df['closing_ratio'] = df['closing_speed_m_per_h'] / (df['dist_min_ci_0_5h'] + 1)
+    
+    # 2. Estimated hours until fire arrives (simple physics)
+    df['est_time_to_hit'] = df['dist_min_ci_0_5h'] / (df['closing_speed_m_per_h'].clip(lower=0.1))
+    df['est_time_to_hit'] = df['est_time_to_hit'].clip(upper=300)
+    
+    # 3. Fire size × growth rate interaction
+    df['size_growth_interaction'] = df['log1p_area_first'] * df['area_growth_rate_ha_per_h']
+    
+    # 4. Is fire aligned AND moving fast toward zone?
+    df['threat_score'] = df['alignment_abs'] * df['centroid_speed_m_per_h']
+    df['size_distance_ratio'] = df['log1p_area_first'] / (df['dist_min_ci_0_5h'] + 1)
+    df['data_quality_score'] = df['dt_first_last_0_5h'] * (1 - df['low_temporal_resolution_0_5h'])
+    df['size_distance_ratio'] = df['log1p_area_first'] / (df['dist_min_ci_0_5h'] + 1)
+    df['data_quality_score'] = df['dt_first_last_0_5h'] * (1 - df['low_temporal_resolution_0_5h'])
+    return df
+
+train = engineer_features(train)
+test = engineer_features(test)
+
+# Define feature list (exclude IDs and targets)
+FEATURES = [c for c in train.columns 
+            if c not in ['event_id', 'event', 'time_to_hit_hours']]
+
+print("Total features:", len(FEATURES))
+print("\nNew features added:")
+new_feats = ['closing_ratio', 'est_time_to_hit', 'size_growth_interaction', 'threat_score']
+print(train[new_feats].describe().round(3))

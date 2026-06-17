@@ -176,3 +176,4 @@ for i, col in enumerate(prob_cols):
 flat = (submission['prob_72h'] == submission['prob_12h']).sum()
 print(f"\nFlat predictions: {flat}")
 print(submission[prob_cols].describe().round(3))
+submission.to_csv("submission_rsf.csv", index=False)
